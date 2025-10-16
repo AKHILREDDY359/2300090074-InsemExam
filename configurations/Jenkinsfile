@@ -1,0 +1,71 @@
+pipeline {
+    agent any
+    
+    tools {
+        maven 'M3'
+        jdk 'jdk17'
+    }
+    
+    environment {
+        // Git repository URL for the backend
+        BACKEND_REPO = 'https://github.com/AKHILREDDY359/2300090074-InsemExam/travel-backend-jenkins-main'
+        // You can also use SSH: git@github.com:AKHILREDDY359/2300090074-InsemExam.git
+        BRANCH = 'main'
+    }
+    
+    stages {
+        stage('Checkout Backend Code') {
+            steps {
+                // Clean the workspace first
+                cleanWs()
+                
+                // Checkout backend code
+                git branch: "${BRANCH}",
+                    url: "${BACKEND_REPO}",
+                    credentialsId: 'github-credentials' // You'll need to set this up in Jenkins
+            }
+        }
+        
+        stage('Build Backend') {
+            steps {
+                dir('travel-backend-jenkins-main') {
+                    sh 'mvn clean package -DskipTests'
+                }
+            }
+        }
+        
+        stage('Test Backend') {
+            steps {
+                dir('travel-backend-jenkins-main') {
+                    sh 'mvn test'
+                }
+            }
+            post {
+                always {
+                    junit '**/surefire-reports/*.xml'
+                }
+            }
+        }
+        
+        stage('Package Backend') {
+            steps {
+                dir('travel-backend-jenkins-main') {
+                    // Package the application
+                    sh 'mvn package -DskipTests'
+                    
+                    // Archive the WAR file
+                    archiveArtifacts 'target/*.war'
+                }
+            }
+        }
+    }
+    
+    post {
+        success {
+            echo 'Backend build and test completed successfully!'
+        }
+        failure {
+            echo 'Backend build or test failed. Check the logs for details.'
+        }
+    }
+}
